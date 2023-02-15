@@ -1,15 +1,9 @@
-package net.courtanet.jenkins
-
-import static com.lesfurets.jenkins.unit.global.lib.LibraryConfiguration.library
-import static org.junit.Assert.assertTrue
-
 import org.junit.*
 import org.junit.rules.TemporaryFolder
 
-import com.lesfurets.jenkins.unit.cps.BasePipelineTestCPS
-import com.lesfurets.jenkins.unit.global.lib.GitSource
+import com.lesfurets.jenkins.unit.BasePipelineTest
 
-class ExampleTest extends BasePipelineTestCPS {
+class ExampleTest extends BasePipelineTest {
 
     @ClassRule
     public static TemporaryFolder folder = new TemporaryFolder()
@@ -19,24 +13,28 @@ class ExampleTest extends BasePipelineTestCPS {
     @BeforeClass
     static void init() {
         temp = folder.newFolder('libs')
+        System.setProperty("printstack.disabled", "false")
     }
 
     @Before
     void setup() {
         super.setUp()
-        helper.registerSharedLibrary(library("commons")
-                        .defaultVersion('master')
-                        .allowOverride(true)
-                        .targetPath(temp.path)
-                        .retriever(GitSource.gitSource('git@gitlab.admin.courtanet.net:devteam/lesfurets-jenkins-shared.git'))
-                        .build())
+        helper.registerAllowedMethod('sh', [Map]) { args ->
+            println("sh was called with=" + args)
+            return 'bcc19744'
+        }
+        helper.registerAllowedMethod('timeout', [Map, Closure], null)
+        helper.registerAllowedMethod('timestamps', []) { println 'Printing timestamp' }
+        helper.registerAllowedMethod('myMethod', [String, int]) { String s, int i ->
+            println "Executing myMethod mock with args: '${s}', '${i}'"
+        }
     }
 
     @Test
-    void should_return_true() {
-        loadScript('pipeline.jenkins')
+    public void configured() throws Exception {
+        def script = loadScript('jobs/exampleJob.jenkins.groovy')
+        script.call()
         printCallStack()
-        assertTrue(true)
     }
 
 }
